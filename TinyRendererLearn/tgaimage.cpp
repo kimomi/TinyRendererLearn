@@ -317,6 +317,17 @@ void TGAImage::clear() {
 	memset((void*)data, 0, width * height * bytespp);
 }
 
+void TGAImage::fill(TGAColor c)
+{
+	for (int i = 0; i < width; i++)
+	{
+		for (int j = 0; j < height; j++)
+		{
+			set(i, j, c);
+		}
+	}
+}
+
 bool TGAImage::scale(int w, int h) {
 	if (w <= 0 || h <= 0 || !data) return false;
 	unsigned char* tdata = new unsigned char[w * h * bytespp];

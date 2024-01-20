@@ -57,6 +57,10 @@ struct TGAColor {
 		}
 		return *this;
 	}
+
+	TGAColor operator +(const TGAColor& c) {
+		return TGAColor(c.r + this->r, c.g + this->g, c.b + this->b, c.a + this -> a);
+	}
 };
 
 
@@ -91,6 +95,7 @@ public:
 	int get_bytespp();
 	unsigned char* buffer();
 	void clear();
+	void fill(TGAColor color);
 };
 
 #endif //__IMAGE_H__

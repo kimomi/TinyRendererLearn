@@ -15,6 +15,10 @@ float cross(Vec2i a, Vec2i b)
     return a.x * b.y - a.y * b.x;
 }
 
+Vec3f cross(const Vec3f& v1, const Vec3f& v2) {
+    return Vec3f(v1.y* v2.z - v1.z * v2.y, v1.z* v2.x - v1.x * v2.z, v1.x* v2.y - v1.y * v2.x);
+}
+
 template <typename T>
 T clamp(T x, T a, T b)
 {
@@ -43,6 +47,19 @@ bool isInTriangle(Vec2i* pts, Vec2i p)
 
     return side0 == side1 && side0 == side2;
 }
+
+Vec3f barycentric2D(Vec2i* pts, Vec2i p)
+{
+    auto a = pts[0];
+    auto b = pts[1];
+    auto c = pts[2];
+
+    float alpha = (float)(-(p.x - b.x) * (c.y - b.y) + (p.y - b.y) * (c.x - b.x)) / (- (a.x - b.x) * (c.y - b.y) + (a.y - b.y) * (c.x - b.x));
+    float beta = (float)(-(p.x - c.x) * (a.y - c.y) + (p.y - c.y) * (a.x - c.x)) / (-(b.x - c.x) * (a.y - c.y) + (b.y - c.y) * (a.x - c.x));
+    float gamma = 1 - alpha - beta;
+    return Vec3f(alpha, beta, gamma);
+}
+
 
 void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
     bool steep = false;
@@ -78,10 +95,10 @@ void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
 void drawModelWire(Model* model, TGAImage& image, int width, int height, TGAColor color)
 {
     for (int i = 0; i < model->nfaces(); i++) {
-        std::vector<int> face = model->face(i);
+        std::vector<std::vector<int> > face = model->face(i);
         for (int j = 0; j < 3; j++) {
-            Vec3f v0 = model->vert(face[j]);
-            Vec3f v1 = model->vert(face[(j + 1) % 3]);
+            Vec3f v0 = model->vert(face[j][0]);
+            Vec3f v1 = model->vert(face[(j + 1) % 3][0]);
             // [-1, 1] -> [0, width]
             int x0 = (v0.x + 1.) / 2. * width;
             int y0 = (v0.y + 1.) / 2. * height;

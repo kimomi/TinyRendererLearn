@@ -5,58 +5,94 @@
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
+const TGAColor green = TGAColor(0, 255, 0, 255);
 
 int main(int argc, char** argv)
 {
     int width = 512;
     int height = 512;
 	TGAImage image(width, height, TGAImage::RGB);
+	image.fill(white);
 
-	//for (size_t i = 0; i < width; i++)
-	//{
-	//	for (size_t j = 0; j < height; j++)
-	//	{
-	//		image.set(i, j, white);
-	//	}
-	//}
+	float* zbuffer = new float[width * height];
+	for (size_t i = 0, c = width * height; i < c; i++)
+	{
+		zbuffer[i] = FLT_TRUE_MIN;
+	}
 
     Model model("../../../obj/african_head.obj");
-    //drawModelWire(&model, image, width, height, white);
-
+	TGAImage basemap;
+	basemap.read_tga_file("../../../texture/african_head_diffuse.tga");
+	basemap.flip_vertically();
 
 	Vec3f lightdir = Vec3f(0.0, 0.0, -1.0).normalize();
-
-	Vec2i pts[3];
+	Vec2i screenPos[3];
+	Vec2f vertUvs[3];
+	Vec3f modelPos[3];
+	Vec3f worldPos[3];
+	Vec3f normal;
 	for (int i = 0; i < model.nfaces(); i++) {
-		std::vector<int> face = model.face(i);
-		Vec3f v0 = model.vert(face[0]);
-		Vec3f v1 = model.vert(face[1]);
-		Vec3f v2 = model.vert(face[2]);
-		Vec3f n = (v2 - v0) ^ (v1 - v0);
+		std::vector<std::vector<int>> face = model.face(i);
+
+		// 三角形顶点数据
+		for (size_t i = 0; i < 3; i++)
+		{
+			modelPos[i] = model.vert(face[i][0]);
+			vertUvs[i] = model.uv(face[i][1]);
+			worldPos[i] = modelPos[i];
+			screenPos[i] = Vec2i((modelPos[i].x + 1.) / 2. * width, (modelPos[i].y + 1.) / 2. * height);
+		}
+		Vec3f n = (worldPos[2] - worldPos[0]) ^ (worldPos[1] - worldPos[0]);
 		n.normalize();
 
-		float diffuseRatio = n * lightdir;
 
-		if (diffuseRatio <= 0)
+		int xmin = min(screenPos[0].x, min(screenPos[1].x, screenPos[2].x));
+		int xmax = max(screenPos[0].x, max(screenPos[1].x, screenPos[2].x));
+		int ymin = min(screenPos[0].y, min(screenPos[1].y, screenPos[2].y));
+		int ymax = max(screenPos[0].y, max(screenPos[1].y, screenPos[2].y));
+		Vec2i p;
+		for (int x = xmin; x < xmax; x++)
 		{
-			continue;
+			for (int y = ymin; y < ymax; y++)
+			{
+				p.x = x;
+				p.y = y;
+				if (isInTriangle(screenPos, p))
+				{
+					auto bary = barycentric2D(screenPos, p);
+					float z = bary.x * worldPos[0].z + bary.y * worldPos[1].z + bary.z * worldPos[2].z;
+					// Z TEST
+					if (z > zbuffer[x + y * width])
+					{
+						zbuffer[x + y * width] = z;
+
+						// init args
+						Vec2f uv = vertUvs[0] * bary.x + vertUvs[1] * bary.y + vertUvs[2] * bary.z;
+
+						// ambient
+						auto baseTGAColor = basemap.get(uv.x * basemap.get_width(), uv.y * basemap.get_height());
+						auto baseColor = Vec3f((float)baseTGAColor.r / 255, (float)baseTGAColor.g / 255, (float)baseTGAColor.b / 255);
+						baseColor = baseColor * 0.9f;
+
+						// diffuse
+						float diffuseRatio = n * lightdir;			
+						float gray = clamp(diffuseRatio, 0.0f, 1.0f) * 0.1f;
+						Vec3f diffuseColor = Vec3f(gray, gray, gray);
+						Vec3f color = baseColor + diffuseColor;
+
+						color.x = clamp(color.x, 0.0f, 1.0f);
+						color.y = clamp(color.y, 0.0f, 1.0f);
+						color.z = clamp(color.z, 0.0f, 1.0f);
+						TGAColor outTGAColor = TGAColor((int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255), 255);
+
+
+						image.set(x, y, outTGAColor);
+					}
+				}
+			}
 		}
-
-		unsigned char gray = clamp((int)floor(10 + diffuseRatio * 255), 0, 255);
-		TGAColor color = TGAColor(gray, gray, gray, 255);
-		//TGAColor color = TGAColor(n.x * 255, n.y * 255, n.z * 255, 255);
-
-		int x0 = (v0.x + 1.) / 2. * width;
-		int y0 = (v0.y + 1.) / 2. * height;
-		int x1 = (v1.x + 1.) / 2. * width;
-		int y1 = (v1.y + 1.) / 2. * height;
-		int x2 = (v2.x + 1.) / 2. * width;
-		int y2 = (v2.y + 1.) / 2. * height;
-		pts[0] = Vec2i(x0, y0);
-		pts[1] = Vec2i(x1, y1);
-		pts[2] = Vec2i(x2, y2);
-		drawTriangle(pts, image, color);
 	}
+	delete[] zbuffer;
 
 	image.flip_vertically();
 	image.write_tga_file("output.tga");
