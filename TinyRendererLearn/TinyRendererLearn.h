@@ -48,15 +48,22 @@ bool isInTriangle(Vec2i* pts, Vec2i p)
     return side0 == side1 && side0 == side2;
 }
 
-Vec3f barycentric2D(Vec2i* pts, Vec2i p)
+Vec3f barycentric2D(Vec2i* pts, Vec2i P)
 {
-    auto a = pts[0];
-    auto b = pts[1];
-    auto c = pts[2];
+    auto A = pts[0];
+    auto B = pts[1];
+    auto C = pts[2];
 
-    float alpha = (float)(-(p.x - b.x) * (c.y - b.y) + (p.y - b.y) * (c.x - b.x)) / (- (a.x - b.x) * (c.y - b.y) + (a.y - b.y) * (c.x - b.x));
-    float beta = (float)(-(p.x - c.x) * (a.y - c.y) + (p.y - c.y) * (a.x - c.x)) / (-(b.x - c.x) * (a.y - c.y) + (b.y - c.y) * (a.x - c.x));
-    float gamma = 1 - alpha - beta;
+    double det = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y);
+    if (det == 0)
+    {
+        det = 0.00001;
+    }
+    double factor_alpha = (B.y - C.y) * (P.x - C.x) + (C.x - B.x) * (P.y - C.y);
+    double factor_beta = (C.y - A.y) * (P.x - C.x) + (A.x - C.x) * (P.y - C.y);
+    double alpha = factor_alpha / det;
+    double beta = factor_beta / det;
+    double gamma = 1.0 - alpha - beta;
     return Vec3f(alpha, beta, gamma);
 }
 

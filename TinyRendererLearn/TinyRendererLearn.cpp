@@ -12,12 +12,12 @@ int main(int argc, char** argv)
     int width = 512;
     int height = 512;
 	TGAImage image(width, height, TGAImage::RGB);
-	image.fill(white);
+	//image.fill(white);
 
 	float* zbuffer = new float[width * height];
 	for (size_t i = 0, c = width * height; i < c; i++)
 	{
-		zbuffer[i] = FLT_TRUE_MIN;
+		zbuffer[i] = -FLT_MAX;
 	}
 
     Model model("../../../obj/african_head.obj");
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 
 						// diffuse
 						float diffuseRatio = n * lightdir;			
-						float gray = clamp(diffuseRatio, 0.0f, 1.0f) * 0.1f;
+						float gray = clamp(diffuseRatio, 0.0f, 1.0f) * 0.0f;
 						Vec3f diffuseColor = Vec3f(gray, gray, gray);
 						Vec3f color = baseColor + diffuseColor;
 
@@ -92,6 +92,7 @@ int main(int argc, char** argv)
 			}
 		}
 	}
+	//drawModelWire(&model, image, width, height, white);
 	delete[] zbuffer;
 
 	image.flip_vertically();
