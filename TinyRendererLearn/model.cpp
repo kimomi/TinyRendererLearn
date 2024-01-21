@@ -5,7 +5,7 @@
 #include <vector>
 #include "model.h"
 
-Model::Model(const char* filename) : verts_(), faces_(), uvs_() {
+Model::Model(const char* filename) : verts_(), faces_(), uvs_(), normals_()  {
     std::ifstream in;
     in.open(filename, std::ifstream::in);
     if (in.fail()) return;
@@ -29,6 +29,15 @@ Model::Model(const char* filename) : verts_(), faces_(), uvs_() {
             }
             uvs_.push_back(v);
         }
+        else if (!line.compare(0, 3, "vn ")) {
+            iss >> trash >> trash;
+            Vec3f v;
+            for (int i = 0; i < 3; i++)
+            {
+                iss >> v.raw[i];
+            }
+            normals_.push_back(v);
+        }
         else if (!line.compare(0, 2, "f ")) {
             std::vector<std::vector<int>> f;
             int itrash, idx, uvIndex, normalIndex;
@@ -46,7 +55,7 @@ Model::Model(const char* filename) : verts_(), faces_(), uvs_() {
             faces_.push_back(f);
         }
     }
-    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << "# vt# " << uvs_.size() << std::endl;
+    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << "# vt# " << uvs_.size() << "# vn# " << normals_.size() << std::endl;
 }
 
 Model::~Model() {
@@ -66,6 +75,11 @@ std::vector<std::vector<int>> Model::face(int idx) {
 
 Vec2f Model::uv(int i) {
     return uvs_[i];
+}
+
+Vec3f Model::normal(int i)
+{
+    return normals_[i];
 }
 
 Vec3f Model::vert(int i) {
