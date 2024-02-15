@@ -10,6 +10,7 @@ protected:
 	Matrix viewM;
 	Matrix projectionM;
 	Matrix clip2screenM;
+	Matrix world2shadowmapM;
 
 public:
 	struct SimpleVertInput
@@ -31,6 +32,14 @@ public:
 		viewM = v;
 		projectionM = p;
 		clip2screenM = c;
+	}
+	void initMartix(Matrix m, Matrix v, Matrix p, Matrix c, Matrix w2sM)
+	{
+		modelM = m;
+		viewM = v;
+		projectionM = p;
+		clip2screenM = c;
+		world2shadowmapM = w2sM;
 	}
 	virtual SimpleVertInput* getVertexInput(int i, Model* model, std::vector<std::vector<int>>& face) = 0;
 	virtual SimpleVertOutput* getFragmentProp(SimpleVertOutput** verts, Vec2i* screenPos2D, Vec2i p) = 0;
