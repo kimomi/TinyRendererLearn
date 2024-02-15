@@ -2,12 +2,14 @@
 #include "gouraudShader.h"
 #include "bindShader.h"
 #include "normalMappingShader.h"
+#include "shadowMapShader.h"
+#include "normalWithShadowShader.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 
-const Vec3f lightdir = Vec3f(0.0, 0.0, -1.0).normalize();
+const Vec3f lightdir = Vec3f(0.5, 0.0, -1.0).normalize();
 Vec3f eye(1, 1, 3);
 Vec3f center(0, 0, 0);
 const int width = 1024;
@@ -18,7 +20,9 @@ Model* model;
 float* zbuffer;
 TGAImage* renderTarget;
 TGAImage* basemap;
-TGAImage* shadermap;
+TGAImage* normalmap;
+
+TGAImage* shadowmap;
 
 void innerRender(IShader& shader, Model* model, TGAImage* renderTarget, float* zbuffer)
 {
@@ -83,47 +87,80 @@ void innerRender(IShader& shader, Model* model, TGAImage* renderTarget, float* z
     }
 }
 
+void resetRenderState()
+{
+    for (size_t i = 0, c = width * height; i < c; i++)
+    {
+        zbuffer[i] = -FLT_MAX;
+    }
+}
+
+Matrix renderShadow()
+{
+    resetRenderState();
+    ShadowMapShader shader;
+
+    Vec3f lightPos = lightdir * -2.0f;
+    auto modelM = Matrix::identity(4);
+    auto viewM = lookat(lightPos, Vec3f(0.0f, 0.0f, 0.0f), Vec3f(0.0, 1.0, 0.0));
+    auto projectionM = Matrix::identity(4);
+    auto clip2screenM = viewport(0.0f, 0.0f, width, height, depth);
+    shader.initMartix(modelM, viewM, projectionM, clip2screenM);
+    innerRender(shader, model, shadowmap, zbuffer);
+    return clip2screenM * projectionM * viewM;
+}
+
+
 void render()
 {
-	NormalMappingShader shader;
+    auto world2shadowmapM = renderShadow();
+
+    resetRenderState();
+	NormalWithShadowShader shader;
 
 	auto modelM = Matrix::identity(4);
 	auto viewM = lookat(eye, center, Vec3f(0.0, 1.0, 0.0));
 	auto projectionM = Matrix::identity(4);
 	projectionM[3][2] = -1.0f / (eye - center).norm();
-	auto clip2screenM = viewport(0, 0, width, height, depth);
-	shader.initMartix(modelM, viewM, projectionM, clip2screenM);
+	auto clip2screenM = viewport(0.0f, 0.0f, width, height, depth);
+	shader.initMartix(modelM, viewM, projectionM, clip2screenM, world2shadowmapM);
 
 	shader.setTexture("basemap", basemap);
-    shader.setTexture("normalmap", shadermap);
+    shader.setTexture("normalmap", normalmap);
 	shader.setVector("lightdir", lightdir);
+    shader.setTexture("shadowmap", shadowmap);
 
 	innerRender(shader, model, renderTarget, zbuffer);
 }
 
-void initRenderState(const char* modelName)
+
+void initRenderState()
 {
-	model = new Model(modelName);
+	//model = new Model("../../../obj/african_head.obj");
+    model = new Model("../../../obj/diablo3_pose.obj");
 	zbuffer = new float[width * height];
-	for (size_t i = 0, c = width * height; i < c; i++)
-	{
-		zbuffer[i] = -FLT_MAX;
-	}
 
 	renderTarget = new TGAImage(width, height, TGAImage::RGB);
 	basemap = new TGAImage();
-	basemap->read_tga_file("../../../texture/african_head_diffuse.tga");
+	//basemap->read_tga_file("../../../texture/african_head_diffuse.tga");
+    basemap->read_tga_file("../../../texture/diablo3_pose_diffuse.tga");
 	basemap->flip_vertically();
 
-    shadermap = new TGAImage();
-    shadermap->read_tga_file("../../../texture/african_head_nm_tangent.tga");
-    shadermap->flip_vertically();
+    normalmap = new TGAImage();
+    //normalmap->read_tga_file("../../../texture/african_head_nm_tangent.tga");
+    normalmap->read_tga_file("../../../texture/diablo3_pose_nm_tangent.tga");
+    normalmap->flip_vertically();
+
+    shadowmap = new TGAImage(width, height, TGAImage::RGB);
 }
 
 void showRenderResult()
 {
 	renderTarget -> flip_vertically();
 	renderTarget -> write_tga_file("output.tga");
+
+    shadowmap->flip_vertically();
+    shadowmap->write_tga_file("shadowmap.tga");
 }
 
 void clearRenderState()
@@ -132,17 +169,13 @@ void clearRenderState()
 	delete[] zbuffer;
 	delete renderTarget;
 	delete basemap;
-    delete shadermap;
+    delete normalmap;
+    delete shadowmap;
 }
 
 int main(int argc, char** argv)
 {
-	const char* modelName = "../../../obj/african_head.obj";
-	if (argc >= 2) 
-	{
-		modelName = argv[1];
-	}
-	initRenderState(modelName);
+	initRenderState();
 
 	render();
 

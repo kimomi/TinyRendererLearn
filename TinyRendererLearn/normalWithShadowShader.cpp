@@ -1,6 +1,6 @@
-#include "normalMappingShader.h"
+#include "normalWithShadowShader.h"
 
-BasicShader::BasicVertOutput* NormalMappingShader::vertex(IShader::SimpleVertInput* basei)
+BasicShader::BasicVertOutput* NormalWithShadowShader::vertex(IShader::SimpleVertInput* basei)
 {
 	BasicShader::BasicVertInput* i = (BasicShader::BasicVertInput*)basei;
 	BasicShader::BasicVertOutput* o = new BasicShader::BasicVertOutput();
@@ -15,9 +15,9 @@ BasicShader::BasicVertOutput* NormalMappingShader::vertex(IShader::SimpleVertInp
 	return o;
 }
 
-Vec4f NormalMappingShader::fragment(IShader::SimpleVertOutput* basei)
+Vec4f NormalWithShadowShader::fragment(IShader::SimpleVertOutput* basei)
 {
-	NormalMappingShader::BasicVertOutput* i = (NormalMappingShader::BasicVertOutput*)basei;
+	NormalWithShadowShader::BasicVertOutput* i = (NormalWithShadowShader::BasicVertOutput*)basei;
 
 	auto baseTGAColor = basemap->getByUv(i->uv.x, i->uv.y);
 	auto baseColor = Vec3f((float)baseTGAColor.r / 255, (float)baseTGAColor.g / 255, (float)baseTGAColor.b / 255);
@@ -25,7 +25,6 @@ Vec4f NormalMappingShader::fragment(IShader::SimpleVertOutput* basei)
 	// ambient
 	auto ambientColor = Vec3f(0.2f, 0.2f, 0.2f);
 
-	// diffuse
 	// normal from normal map
 	auto normalTGAColor = normalmap->getByUv(i->uv.x, i->uv.y);
 	auto normalColor = Vec3f((float)normalTGAColor.r / 255, (float)normalTGAColor.g / 255, (float)normalTGAColor.b / 255);
@@ -33,18 +32,27 @@ Vec4f NormalMappingShader::fragment(IShader::SimpleVertOutput* basei)
 	auto normaldir = normalColor * 2.0 - Vec3f(1.0, 1.0, 1.0);
 	auto n = modelM * i->tangentM * normaldir;
 
+	// diffuse
 	float diffuseRatio = n * (Vec3f(0.0f, 0.0f, 0.0f) - lightdir);
 	diffuseRatio = clamp(diffuseRatio, 0.0f, 1.0f);
 	auto diffuseColor = Vec3f(0.9, 0.9, 0.8) * diffuseRatio;
 
+	// shadow
+	float shadowRatio = 1.0f;
+	auto shadowMapSamplePos = world2shadowmapM * i->worldPos;
+	float curShadowZColor = packZ2Color(shadowMapSamplePos.z);
+	if (curShadowZColor + 1e3 < (shadowmap->get(int(shadowMapSamplePos.x), int(shadowMapSamplePos.y)).r / 255.0f))
+	{
+		shadowRatio = 0.1f;
+	}
 
 	// combine color
-	Vec3f color = baseColor.mul(ambientColor + diffuseColor);
+	Vec3f color = baseColor.mul(ambientColor + diffuseColor) * shadowRatio;
 
 	return Vec4f(color.x, color.y, color.z, 1.0f);
 }
 
-void NormalMappingShader::setTexture(const char* textureName, TGAImage* texture)
+void NormalWithShadowShader::setTexture(const char* textureName, TGAImage* texture)
 {
 	if (strcmp(textureName, "basemap") == 0)
 	{
@@ -53,6 +61,10 @@ void NormalMappingShader::setTexture(const char* textureName, TGAImage* texture)
 	else if (strcmp(textureName, "normalmap") == 0)
 	{
 		normalmap = texture;
+	}
+	else if (strcmp(textureName, "shadowmap") == 0)
+	{
+		shadowmap = texture;
 	}
 	else
 	{

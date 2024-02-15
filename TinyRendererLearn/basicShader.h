@@ -7,6 +7,7 @@ struct BasicShader : public IShader
 protected:
 	TGAImage* basemap;
 	Vec3f lightdir;
+	float packZ2Color(float z) { return z / 255.0f * 0.5f + 0.5f; };
 
 public:
 	struct BasicVertInput : SimpleVertInput
