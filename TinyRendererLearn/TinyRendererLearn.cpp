@@ -4,6 +4,7 @@
 #include "normalMappingShader.h"
 #include "shadowMapShader.h"
 #include "normalWithShadowShader.h"
+#include "postProcessShader.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
@@ -19,6 +20,7 @@ const int depth = 255;
 Model* model;
 float* zbuffer;
 TGAImage* renderTarget;
+TGAImage* postprocessTarget;
 TGAImage* basemap;
 TGAImage* normalmap;
 
@@ -110,6 +112,22 @@ Matrix renderShadow()
     return clip2screenM * projectionM * viewM;
 }
 
+void postProcess()
+{
+    PostProcessShader shader;
+    shader.init(renderTarget, zbuffer, Vec2i(width, height));
+
+    for (int i = 0; i < width; i++)
+    {
+        for (int j = 0; j < height; j++)
+        {
+            auto color = shader.fragment(Vec2i(i, j));
+            TGAColor tgaColor((int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255), (int)(color.w * 255));;
+            postprocessTarget->set(i, j, tgaColor);
+        }
+    }
+}
+
 
 void render()
 {
@@ -131,6 +149,8 @@ void render()
     shader.setTexture("shadowmap", shadowmap);
 
 	innerRender(shader, model, renderTarget, zbuffer);
+
+    postProcess();
 }
 
 
@@ -152,6 +172,7 @@ void initRenderState()
     normalmap->flip_vertically();
 
     shadowmap = new TGAImage(width, height, TGAImage::RGB);
+    postprocessTarget = new TGAImage(width, height, TGAImage::RGB);
 }
 
 void showRenderResult()
@@ -161,6 +182,9 @@ void showRenderResult()
 
     shadowmap->flip_vertically();
     shadowmap->write_tga_file("shadowmap.tga");
+
+    postprocessTarget->flip_vertically();
+    postprocessTarget->write_tga_file("postprocess_output.tga");
 }
 
 void clearRenderState()
@@ -171,6 +195,7 @@ void clearRenderState()
 	delete basemap;
     delete normalmap;
     delete shadowmap;
+    delete postprocessTarget;
 }
 
 int main(int argc, char** argv)

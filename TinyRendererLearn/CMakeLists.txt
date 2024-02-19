@@ -9,7 +9,7 @@ project ("TinyRendererLearn")
 add_executable (TinyRendererLearn "TinyRendererLearn.cpp" "TinyRendererLearn.h" "tgaimage.cpp" "tgaimage.h"
 "model.cpp" "model.h" "geometry.h" "geometry.cpp" "shader.h" "basicShader.h" "basicShader.cpp" "gouraudShader.h"
 "gouraudShader.cpp" "bindShader.cpp" "bindShader.h" "normalMappingShader.cpp" "normalMappingShader.h" 
-"shadowMapShader.cpp" "shadowmapShader.h" "normalWithShadowShader.cpp" "normalWithShadowShader.h")
+"shadowMapShader.cpp" "shadowmapShader.h" "normalWithShadowShader.cpp" "normalWithShadowShader.h" "postProcessShader.cpp" "postProcessShader.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET TinyRendererLearn PROPERTY CXX_STANDARD 20)
